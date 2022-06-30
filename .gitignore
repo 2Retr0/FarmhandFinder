@@ -1,0 +1,13 @@
+#macOS
+**/.DS_Store
+
+# Rider
+**/.idea/
+**/bin/
+**/obj/
+**/packages/
+riderModule.iml
+**/_ReSharper.Caches/
+
+# User specific
+**/*.user
