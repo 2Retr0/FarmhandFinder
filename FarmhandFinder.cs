@@ -18,7 +18,8 @@ namespace FarmhandFinder
     public class FarmhandFinder : Mod
     {
         internal static FarmhandFinder Instance { get; private set; }
-
+        internal static ModConfig Config;
+        
         private Texture2D backgroundTexture;
         private Texture2D foregroundTexture;
         private Texture2D arrowTexture;
@@ -26,7 +27,10 @@ namespace FarmhandFinder
         public override void Entry(IModHelper helper)
         {
             Instance = this;
-            
+            Config = Helper.ReadConfig<ModConfig>();
+
+            if (Config.HideCompassArrow && Config.HidePlayerSpriteBubble)
+                return;
             helper.Events.Display.RenderedHud += OnRenderedHud;
             
             backgroundTexture = helper.ModContent.Load<Texture2D>("assets/background2.png");
@@ -40,11 +44,13 @@ namespace FarmhandFinder
 
             // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
             // TODO: however, when using Game1.uiViewport, intersection calculations fail.
-            // Generate four lines boxing in the viewport with an inwards offset (that is a smaller 'box').
+            // Generate four lines boxing in the viewport with an inwards offset (that is, a smaller 'box').
             var spriteDrawBounds = Utility.GenerateSpriteDrawBounds(
-                Game1.viewport.X, Game1.viewport.Y, Game1.viewport.Width, Game1.viewport.Height, 50);
+                Game1.viewport.X, Game1.viewport.Y, Game1.viewport.Width, Game1.viewport.Height, 
+                Config.HideCompassArrow ? 40 : 50);
 
-            var playerCenter = (Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize)).ToPoint();
+            var playerCenter = (Game1.player.Position + 
+                                new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize)).ToPoint();
 
             // TODO: Maybe cache players?
             foreach (var farmer in Game1.getOnlineFarmers())
@@ -71,19 +77,27 @@ namespace FarmhandFinder
                 var intersection = (Vector2) spriteDrawBounds.Select(l =>
                     Utility.LineIntersect(playerCenter, peerBounds.Center, l.Item1, l.Item2)).First(p => p != null);
 
-                // Drawing the background sprite, farmer head, and foreground sprite at the intersection point.
+                // Calculate a normalized position based on the viewport, zoom level, and UI scale.
                 var backgroundPos = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
                     * Game1.options.zoomLevel / Game1.options.uiScale;
-                Utility.DrawUiSprite(e.SpriteBatch, backgroundTexture, backgroundPos, 0f);
-                Utility.DrawFarmerHead(e.SpriteBatch, farmer, backgroundPos, 0.75f);
-                Utility.DrawUiSprite(e.SpriteBatch, foregroundTexture, backgroundPos, 0f);
+                
+                if (!Config.HidePlayerSpriteBubble)
+                {
+                    // Drawing the background sprite, farmer head, and foreground sprite at the normalized position.
+                    Utility.DrawUiSprite(e.SpriteBatch, backgroundTexture, backgroundPos, 0f);
+                    Utility.DrawFarmerHead(e.SpriteBatch, farmer, backgroundPos, 0.75f);
+                    Utility.DrawUiSprite(e.SpriteBatch, foregroundTexture, backgroundPos, 0f);   
+                }
 
-                // Drawing the arrow sprite pivoted at an offset in the +X direction about the intersection point and
-                // rotated in the direction of the intersection point to center of the peer.
-                var arrowAngle = (float) Math.Atan2(peerCenter.Y - intersection.Y, peerCenter.X - intersection.X);
-                var arrowPos = backgroundPos + new Vector2((float)Math.Cos(arrowAngle), (float)Math.Sin(arrowAngle))
-                    * (36 * Game1.options.uiScale);
-                Utility.DrawUiSprite(e.SpriteBatch, arrowTexture, arrowPos, arrowAngle + MathHelper.PiOver2);
+                if (!Config.HideCompassArrow)
+                {
+                    // Drawing the arrow sprite pivoted at an offset in the +X direction about the intersection point and
+                    // rotated in the direction of the intersection point to center of the peer.
+                    var arrowAngle = (float) Math.Atan2(peerCenter.Y - intersection.Y, peerCenter.X - intersection.X);
+                    var arrowPos = backgroundPos + new Vector2((float)Math.Cos(arrowAngle), (float)Math.Sin(arrowAngle))
+                        * (36 * Game1.options.uiScale);
+                    Utility.DrawUiSprite(e.SpriteBatch, arrowTexture, arrowPos, arrowAngle + MathHelper.PiOver2);   
+                }
             }
         }
     }
