@@ -73,7 +73,7 @@ namespace FarmhandFinder
         public static void DrawFarmerHead(SpriteBatch spriteBatch, Farmer farmer, Vector2 position, float scale)
         {
             // The size of the head needs to also factor in the current UI scale.
-            var fixedScale = 4 * scale * Game1.options.uiScale;
+            var fixedScale = scale * Game1.options.uiScale;
             // The constants for the origin are chosen such that the head lines up just above the third-most bottom
             // pixel of the background sprite. I'm not sure how to make the calculation cleaner...
             var origin = new Vector2(8f, (1 + scale) / 2 * (10.25f + (farmer.IsMale ? 0 : 0.75f)));
@@ -91,7 +91,7 @@ namespace FarmhandFinder
                     position, 
                     headSourceRect, 
                     Color.White, 
-                    0f, origin, fixedScale, SpriteEffects.None, 0.8f);
+                    0f, origin, 4 * fixedScale, SpriteEffects.None, 0.8f);
             }
             
             void DrawFarmerAccessories()
@@ -106,7 +106,7 @@ namespace FarmhandFinder
                     position + new Vector2(0, 8) * fixedScale,
                     accessorySourceRect, 
                     farmer.hairstyleColor.Value,
-                    0, origin, fixedScale, SpriteEffects.None, 0.8f + farmer.accessory.Value < 8 ? 
+                    0, origin, 4 * fixedScale, SpriteEffects.None, 0.8f + farmer.accessory.Value < 8 ? 
                         1.9E-05f : 2.9E-05f);
             }
 
@@ -146,7 +146,7 @@ namespace FarmhandFinder
                             (farmer.IsMale || farmer.hair.Value >= 16 ? 0 : 4) : -4)) * fixedScale, 
                     hairstyleSourceRect, 
                     farmer.hairstyleColor.Value, 
-                    0, origin, fixedScale, SpriteEffects.None, 0.8f + 2.2E-05f);
+                    0, origin, 4 * fixedScale, SpriteEffects.None, 0.8f + 2.2E-05f);
                 }
             
             void DrawFarmerHat(int sideOffset, int topOffset, int bottomOffset)
@@ -166,7 +166,7 @@ namespace FarmhandFinder
                             0 : FarmerRenderer.hairstyleHatOffset[farmer.hair.Value % 16]) + 4) * fixedScale, 
                     hatSourceRect, 
                     farmer.hat.Value.isPrismatic.Value ? StardewValley.Utility.GetPrismaticColor() : Color.White, 
-                    0, hatOrigin, fixedScale, SpriteEffects.None, 0.8f + 3.9E-05f);
+                    0, hatOrigin, 4 * fixedScale, SpriteEffects.None, 0.8f + 3.9E-05f);
             }
             
 
