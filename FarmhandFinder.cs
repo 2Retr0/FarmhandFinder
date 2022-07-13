@@ -1,16 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using StardewValley.Network;
-using Color = Microsoft.Xna.Framework.Color;
-using Point = Microsoft.Xna.Framework.Point;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
