@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Netcode;
 using StardewValley;
 
 namespace FarmhandFinder
@@ -54,8 +55,9 @@ namespace FarmhandFinder
         public static void DrawUiSprite(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, float angle)
         {
             int width = texture.Width, height = texture.Height;
-            spriteBatch.Draw(texture, position, new Rectangle(0, 0, width, height), Color.White, angle, 
-                new Vector2(width / 2f, height / 2f), Game1.options.uiScale * 4f, SpriteEffects.None, 0.8f);
+            spriteBatch.Draw(
+                texture, position, new Rectangle(0, 0, width, height), Color.White, angle, 
+                new Vector2(width / 2f, height / 2f), 4 * Game1.options.uiScale, SpriteEffects.None, 0.8f);
         }
         
         
@@ -72,8 +74,6 @@ namespace FarmhandFinder
         
         public static void DrawFarmerHead(SpriteBatch spriteBatch, Farmer farmer, Vector2 position, float scale)
         {
-            // The size of the head needs to also factor in the current UI scale.
-            var fixedScale = scale * Game1.options.uiScale;
             // The constants for the origin are chosen such that the head lines up just above the third-most bottom
             // pixel of the background sprite. I'm not sure how to make the calculation cleaner...
             var origin = new Vector2(8f, (1 + scale) / 2 * (10.25f + (farmer.IsMale ? 0 : 0.75f)));
@@ -91,7 +91,7 @@ namespace FarmhandFinder
                     position, 
                     headSourceRect, 
                     Color.White, 
-                    0f, origin, 4 * fixedScale, SpriteEffects.None, 0.8f);
+                    0, origin, 4 * scale, SpriteEffects.None, 0.8f);
             }
             
             void DrawFarmerAccessories()
@@ -103,10 +103,10 @@ namespace FarmhandFinder
                 
                 spriteBatch.Draw(
                     FarmerRenderer.accessoriesTexture,
-                    position + new Vector2(0, 8) * fixedScale,
+                    position + new Vector2(0, 8) * scale,
                     accessorySourceRect, 
                     farmer.hairstyleColor.Value,
-                    0, origin, 4 * fixedScale, SpriteEffects.None, 0.8f + farmer.accessory.Value < 8 ? 
+                    0, origin, 4 * scale, SpriteEffects.None, 0.8f + farmer.accessory.Value < 8 ? 
                         1.9E-05f : 2.9E-05f);
             }
 
@@ -143,10 +143,10 @@ namespace FarmhandFinder
                     position + new Vector2(
                         0, 
                         4 + (!farmer.IsMale || farmer.hair.Value < 16 ? 
-                            (farmer.IsMale || farmer.hair.Value >= 16 ? 0 : 4) : -4)) * fixedScale, 
+                            (farmer.IsMale || farmer.hair.Value >= 16 ? 0 : 4) : -4)) * scale, 
                     hairstyleSourceRect, 
                     farmer.hairstyleColor.Value, 
-                    0, origin, 4 * fixedScale, SpriteEffects.None, 0.8f + 2.2E-05f);
+                    0, origin, 4 * scale, SpriteEffects.None, 0.8f + 2.2E-05f);
                 }
             
             void DrawFarmerHat(int sideOffset, int topOffset, int bottomOffset)
@@ -163,12 +163,11 @@ namespace FarmhandFinder
                     position + new Vector2(
                         -8 + 4 * sideOffset, 
                         -12 + 4 * topOffset + (farmer.hat.Value.ignoreHairstyleOffset.Value ? 
-                            0 : FarmerRenderer.hairstyleHatOffset[farmer.hair.Value % 16]) + 4) * fixedScale, 
+                            0 : FarmerRenderer.hairstyleHatOffset[farmer.hair.Value % 16]) + 4) * scale, 
                     hatSourceRect, 
                     farmer.hat.Value.isPrismatic.Value ? StardewValley.Utility.GetPrismaticColor() : Color.White, 
-                    0, hatOrigin, 4 * fixedScale, SpriteEffects.None, 0.8f + 3.9E-05f);
+                    0, hatOrigin, 4 * scale, SpriteEffects.None, 0.8f + 3.9E-05f);
             }
-            
 
             // Note: Accessories are facial hair and glasses.
             DrawFarmerFace();
@@ -182,6 +181,81 @@ namespace FarmhandFinder
             //       suit as it may be confusing for identifying the farmer.
             if (farmer.hat.Value != null) 
                 DrawFarmerHat(2, 3, 2);
+        
         }
+        
+        
+        
+        public static Texture2D GenerateCompassBubbleTexture(Farmer farmer)
+        {
+            var graphicsDevice = Game1.graphics.GraphicsDevice;
+            var backgroundTexture = FarmhandFinder.BackgroundTexture; 
+            var foregroundTexture = FarmhandFinder.ForegroundTexture;
+            
+            // We first generate a new RenderTarget2D which will act as a buffer to hold the final texture.
+            // Since the scaling of the sprites will already be at 400% (as we want to draw the farmer head at a scale
+            // different from the background and foreground), we have to make the texture at a scale of 400% of the
+            // true texture dimensions.
+            var textureBuffer = new RenderTarget2D(
+                graphicsDevice, 
+                4 * backgroundTexture.Width, 
+                4 * backgroundTexture.Height, 
+                false, SurfaceFormat.Color, DepthFormat.None);
+
+            // We then change the graphics device to target the new texture buffer such that when we draw sprites, they
+            // will be drawn onto the texture rather than to the screen.
+            graphicsDevice.SetRenderTarget(textureBuffer);
+            graphicsDevice.Clear(Color.Transparent);
+
+            // We then create a temporary spriteBatch to which we draw the background, farmer head, and foreground at
+            // an offset equal to the middle of the final texture.
+            var offset = 4 * backgroundTexture.Width / 2f * Vector2.One;
+            using (var spriteBatch = new SpriteBatch(graphicsDevice))
+            {
+                spriteBatch.Begin(
+                    samplerState: SamplerState.PointClamp,
+                    depthStencilState: DepthStencilState.Default, 
+                    rasterizerState: RasterizerState.CullNone);
+
+                DrawUiSprite(spriteBatch, backgroundTexture, offset, 0f);
+                DrawFarmerHead(spriteBatch, farmer, offset, 0.75f);
+                DrawUiSprite(spriteBatch, foregroundTexture, offset, 0f);
+
+                spriteBatch.End();
+            }
+            
+            // Finally, the render target of the graphics device is reset and we return the resulting texture drawn
+            // to the temporary spriteBatch.
+            graphicsDevice.SetRenderTarget(null);
+            return textureBuffer;
+        }
+
+
+
+        public static void DrawCompassBubbleTexture(
+            SpriteBatch spriteBatch, Farmer farmer, Vector2 position, float scale, float alpha)
+        {
+            if (!FarmhandFinder.CompassBubbleTextures.ContainsKey(farmer.UniqueMultiplayerID))
+                return;
+
+            var compassTexture = FarmhandFinder.CompassBubbleTextures[farmer.UniqueMultiplayerID];
+            int width = compassTexture.Width, height = compassTexture.Height;
+            spriteBatch.Draw(
+                compassTexture, position, new Rectangle(0, 0, width, height), Color.White * alpha, 0, 
+                new Vector2(width / 2f, height / 2f), scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
+        }
+        
+        
+        
+        public static int GetFarmerHeadHash(Farmer farmer)
+        {
+            // TODO: Is there a better way to check the base texture for farmers (i.e. nose, gender, etc.)?
+            var textureNameValue = FarmhandFinder.Instance.Helper.Reflection.GetField<NetString>(
+                    farmer.FarmerRenderer, "textureName").GetValue();
+
+            // We hash a combination of various features that can be changed on the farmer's head for easy comparison.
+            return HashCode.Combine(
+                textureNameValue, farmer.newEyeColor, farmer.skin, farmer.hair, farmer.hairstyleColor, farmer.hat);
+        } 
     }
 }
