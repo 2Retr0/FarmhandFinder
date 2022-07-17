@@ -41,9 +41,9 @@ namespace FarmhandFinder
 
         private void LoadTextures(IModHelper helper)
         {
-            BackgroundTexture = helper.ModContent.Load<Texture2D>("assets/background2.png");
-            ForegroundTexture = helper.ModContent.Load<Texture2D>("assets/foreground.png");
-            ArrowTexture = helper.ModContent.Load<Texture2D>("assets/arrow.png");
+            BackgroundTexture = helper.Content.Load<Texture2D>("assets/background2.png");
+            ForegroundTexture = helper.Content.Load<Texture2D>("assets/foreground.png");
+            ArrowTexture = helper.Content.Load<Texture2D>("assets/arrow.png");
         }
         
         
