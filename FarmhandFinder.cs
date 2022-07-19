@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
+using StardewValley.Menus;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -22,6 +23,7 @@ namespace FarmhandFinder
         
         internal static readonly Dictionary<long, int> FarmerHeadHashes = new();
         internal static readonly Dictionary<long, Texture2D> CompassBubbleTextures = new();
+        internal static readonly IList<Rectangle> menuItemRects;
 
         
         public override void Entry(IModHelper helper)
@@ -41,9 +43,9 @@ namespace FarmhandFinder
 
         private void LoadTextures(IModHelper helper)
         {
-            BackgroundTexture = helper.Content.Load<Texture2D>("assets/background2.png");
-            ForegroundTexture = helper.Content.Load<Texture2D>("assets/foreground.png");
-            ArrowTexture = helper.Content.Load<Texture2D>("assets/arrow.png");
+            BackgroundTexture = helper.ModContent.Load<Texture2D>("assets/background2.png");
+            ForegroundTexture = helper.ModContent.Load<Texture2D>("assets/foreground.png");
+            ArrowTexture = helper.ModContent.Load<Texture2D>("assets/arrow.png");
         }
         
         
@@ -59,14 +61,22 @@ namespace FarmhandFinder
                     var farmer = Game1.getFarmer(peer.PlayerID);
                     var currentHeadHash = Utility.GetFarmerHeadHash(farmer);
                     
-                    // Only update if the head hash exists and has been changed.
-                    if (!FarmerHeadHashes.ContainsKey(farmer.UniqueMultiplayerID)
-                        || FarmerHeadHashes[farmer.UniqueMultiplayerID] == currentHeadHash) 
-                        continue;
-
-                    // Update farmer compass bubble texture and head hash.
-                    CompassBubbleTextures[farmer.UniqueMultiplayerID] = Utility.GenerateCompassBubbleTexture(farmer);
-                    FarmerHeadHashes[farmer.UniqueMultiplayerID] = currentHeadHash;
+                    if (FarmerHeadHashes.ContainsKey(farmer.UniqueMultiplayerID))
+                    {
+                        // Only update bubble textures if head hash already exists but has been changed.
+                        if (FarmerHeadHashes[farmer.UniqueMultiplayerID] == currentHeadHash)
+                            continue;
+                        
+                        CompassBubbleTextures[farmer.UniqueMultiplayerID] = Utility.GenerateCompassBubbleTexture(farmer);
+                        FarmerHeadHashes[farmer.UniqueMultiplayerID] = currentHeadHash;
+                    }
+                    else
+                    {
+                        // Generate a corresponding compass bubble texture and head hash for the farmer if one has not
+                        // been created yet.
+                        CompassBubbleTextures.Add(farmer.UniqueMultiplayerID, Utility.GenerateCompassBubbleTexture(farmer));
+                        FarmerHeadHashes.Add(farmer.UniqueMultiplayerID, currentHeadHash);
+                    }
                 }
             };
 
@@ -86,10 +96,9 @@ namespace FarmhandFinder
                 FarmerHeadHashes.Clear();
             };
         }
+        
 
 
-        
-        
         private void OnRenderedHud(object sender, RenderedHudEventArgs e)
         {
             if (!Context.HasRemotePlayers) return; // Ignore if player hasn't loaded a save yet.
@@ -104,7 +113,7 @@ namespace FarmhandFinder
             // TODO: Move intersection calculations into a separate function?
             var playerCenter = (Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize))
                 .ToPoint();
-            
+
             foreach (var peer in Helper.Multiplayer.GetConnectedPlayers())
             {
                 var farmer = Game1.getFarmer(peer.PlayerID);
@@ -137,21 +146,12 @@ namespace FarmhandFinder
                 var backgroundPos = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
                     * Game1.options.zoomLevel / Game1.options.uiScale;
 
-                if (!Config.HideCompassBubble)
+                // Only draw the compass bubble if one has already been generated (denoted with the existence of a 
+                // farmer head hash).
+                if (!Config.HideCompassBubble && FarmerHeadHashes.ContainsKey(farmer.UniqueMultiplayerID))
                 {
-                    // Generate a corresponding compass bubble texture and head hash for the farmer if one has not been
-                    // created yet.
-                    // TODO: This should be made independent of when the screen draws however when trying to use events
-                    // TODO: such as 'GameLoop.SaveLoaded', peers' baseTexture's remain null and cannot be drawn.
-                    // TODO: A similar issue occurs with 'Multiplayer.PeerConnected'.
-                    if (!FarmerHeadHashes.ContainsKey(farmer.UniqueMultiplayerID))
-                    {
-                        CompassBubbleTextures.Add(farmer.UniqueMultiplayerID, Utility.GenerateCompassBubbleTexture(farmer));
-                        FarmerHeadHashes.Add(farmer.UniqueMultiplayerID, Utility.GetFarmerHeadHash(farmer));
-                    }
-                    
                     // Drawing the compass bubble at the normalized position.
-                    Utility.DrawCompassBubbleTexture(e.SpriteBatch, farmer, backgroundPos, 1, 0.5f);
+                    Utility.DrawCompassBubbleTexture(e.SpriteBatch, farmer, backgroundPos, 1, 1f);
                 }
 
                 if (!Config.HideCompassArrow)
