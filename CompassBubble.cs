@@ -13,6 +13,61 @@ namespace FarmhandFinder
         private int farmerHeadHash;
         private Texture2D compassTexture;
         
+        /*********
+        ** Public methods
+        *********/
+        /// <summary>Creates a new compass bubble for a farmer.</summary>
+        /// <param name="targetFarmer">The farmer which the compass bubble will represent.</param>
+        /// <param name="helper">IModHelper instance to add event predicates.</param>
+        public CompassBubble(Farmer targetFarmer, IModHelper helper)
+        {
+            farmer = targetFarmer;
+            farmerHeadHash = -1;
+            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
+        }
+
+
+
+        /// <summary>Draws the compass bubble.</summary>
+        /// <param name="spriteBatch">The spritebatch to draw to.</param>
+        /// <param name="position">The position at which the sprite will be drawn. The sprite will be centered about
+        /// this position.</param>
+        /// <param name="scale">The scale at which the sprite will be drawn.</param>
+        /// <param name="alpha">The alpha value at which the sprite will be drawn.</param>
+        public void Draw(SpriteBatch spriteBatch, Vector2 position, float scale, float alpha)
+        {
+            // Only draw if the farmer's head hash is non-null (i.e. their head texture has been generated).
+            if (farmerHeadHash == -1) return;
+
+            int width = compassTexture.Width, height = compassTexture.Height;
+            spriteBatch.Draw(
+                compassTexture, position, new Rectangle(0, 0, width, height), Color.White * alpha, 0, 
+                new Vector2(width / 2f, height / 2f), scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
+        }
+        
+        
+        
+        /*********
+        ** Private methods
+        *********/
+        /// <summary>Invoked before/after the game state is updated (~60 times per second).</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event data.</param>
+        private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
+        {
+            if (!e.IsMultipleOf(30)) return; // Only run function every half second.
+            
+            // Regenerate the compass texture if the head hash has changed and is non-null. As texture generation is
+            // expensive, we only want to regenerate it when the farmer changes their appearance.
+            var currentHeadHash = GenerateHeadHash();
+            if (currentHeadHash == farmerHeadHash || currentHeadHash == -1) return;
+            
+            farmerHeadHash = currentHeadHash;
+            compassTexture = GenerateTexture();
+        }
+        
+        
+        
         /// <summary>Generates a hash code representing all visible components of the farmer's head features.</summary>
         /// <returns>The head hash code.</returns>
         private int GenerateHeadHash()
@@ -32,39 +87,9 @@ namespace FarmhandFinder
         
         
         
-        /// <summary>Invoked before/after the game state is updated (~60 times per second).</summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event data.</param>
-        private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
-        {
-            if (!e.IsMultipleOf(30)) return; // Only run function every half second.
-            
-            // Regenerate the compass texture if the head hash has changed and is non-null. As texture generation is
-            // expensive, we only want to regenerate it when the farmer changes their appearance.
-            var currentHeadHash = GenerateHeadHash();
-            if (currentHeadHash == farmerHeadHash || currentHeadHash == -1) return;
-            
-            farmerHeadHash = currentHeadHash;
-            compassTexture = GenerateTexture();
-        }
-        
-        
-        
-        /// <summary>Creates a new compass bubble for a farmer.</summary>
-        /// <param name="targetFarmer">The farmer which the compass bubble will represent.</param>
-        /// <param name="helper">IModHelper instance to add event predicates.</param>
-        public CompassBubble(Farmer targetFarmer, IModHelper helper)
-        {
-            farmer = targetFarmer;
-            farmerHeadHash = -1;
-            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
-        }
-
-
-
         /// <summary>Generates the compass bubble texture so that it appears uniform under semi-transparency.</summary>
         /// <returns>The generated compass bubble texture.</returns>
-        public Texture2D GenerateTexture()
+        private Texture2D GenerateTexture()
         {
             var graphicsDevice = Game1.graphics.GraphicsDevice;
             var backgroundTexture = FarmhandFinder.BackgroundTexture; 
@@ -105,25 +130,6 @@ namespace FarmhandFinder
             // Finally, the render target of the graphics device is reset and we save the resulting texture.
             graphicsDevice.SetRenderTarget(null);
             return textureBuffer;
-        }
-
-
-
-        /// <summary>Draws the compass bubble.</summary>
-        /// <param name="spriteBatch">The spritebatch to draw to.</param>
-        /// <param name="position">The position at which the sprite will be drawn. The sprite will be centered about
-        /// this position.</param>
-        /// <param name="scale">The scale at which the sprite will be drawn.</param>
-        /// <param name="alpha">The alpha value at which the sprite will be drawn.</param>
-        public void Draw(SpriteBatch spriteBatch, Vector2 position, float scale, float alpha)
-        {
-            // Only draw if the farmer's head hash is non-null (i.e. their head texture has been generated).
-            if (farmerHeadHash == -1) return;
-
-            int width = compassTexture.Width, height = compassTexture.Height;
-            spriteBatch.Draw(
-                compassTexture, position, new Rectangle(0, 0, width, height), Color.White * alpha, 0, 
-                new Vector2(width / 2f, height / 2f), scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
         }
     }
 }
