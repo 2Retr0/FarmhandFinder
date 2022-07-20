@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using StardewValley.Menus;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -21,11 +20,9 @@ namespace FarmhandFinder
         internal static Texture2D ForegroundTexture;
         internal static Texture2D ArrowTexture;
         
-        internal static readonly Dictionary<long, int> FarmerHeadHashes = new();
-        internal static readonly Dictionary<long, Texture2D> CompassBubbleTextures = new();
-        internal static readonly IList<Rectangle> menuItemRects;
+        // internal static readonly Dictionary<long, int> FarmerHeadHashes = new();
+        internal static readonly Dictionary<long, CompassBubble> CompassBubbles = new();
 
-        
         public override void Entry(IModHelper helper)
         {
             Instance = this; Config = Helper.ReadConfig<ModConfig>();
@@ -36,7 +33,7 @@ namespace FarmhandFinder
                 helper.Events.Display.RenderedHud += OnRenderedHud;
 
             if (!Config.HideCompassBubble)
-                HandleCompassBubbleTextureGeneration(helper);
+                HandleCompassBubbles(helper);
         }
 
 
@@ -50,51 +47,27 @@ namespace FarmhandFinder
         
         
         
-        private void HandleCompassBubbleTextureGeneration(IModHelper helper)
+        private void HandleCompassBubbles(IModHelper helper)
         {
-            helper.Events.GameLoop.UpdateTicked += (_, e) =>
+            helper.Events.GameLoop.OneSecondUpdateTicked += (_, _) =>
             {
-                if (!e.IsMultipleOf(30)) return; // Only run function every half second.
-                
+                // Generate a corresponding compass bubble and add to dictionary if one has not been created yet.
                 foreach (var peer in Helper.Multiplayer.GetConnectedPlayers())
                 {
                     var farmer = Game1.getFarmer(peer.PlayerID);
-                    var currentHeadHash = Utility.GetFarmerHeadHash(farmer);
+                    if (CompassBubbles.ContainsKey(farmer.UniqueMultiplayerID))
+                        continue;
                     
-                    if (FarmerHeadHashes.ContainsKey(farmer.UniqueMultiplayerID))
-                    {
-                        // Only update bubble textures if head hash already exists but has been changed.
-                        if (FarmerHeadHashes[farmer.UniqueMultiplayerID] == currentHeadHash)
-                            continue;
-                        
-                        CompassBubbleTextures[farmer.UniqueMultiplayerID] = Utility.GenerateCompassBubbleTexture(farmer);
-                        FarmerHeadHashes[farmer.UniqueMultiplayerID] = currentHeadHash;
-                    }
-                    else
-                    {
-                        // Generate a corresponding compass bubble texture and head hash for the farmer if one has not
-                        // been created yet.
-                        CompassBubbleTextures.Add(farmer.UniqueMultiplayerID, Utility.GenerateCompassBubbleTexture(farmer));
-                        FarmerHeadHashes.Add(farmer.UniqueMultiplayerID, currentHeadHash);
-                    }
+                    CompassBubbles.Add(farmer.UniqueMultiplayerID, new CompassBubble(farmer, helper));
                 }
             };
 
-            // If a peer disconnects from the world, remove their respective compass bubble and head hash dictionary
-            // entries.
+            // If a peer disconnects from the world, remove their respective dictionary entry.
             // TODO: This doesn't seem to work properly at the moment?
-            helper.Events.Multiplayer.PeerDisconnected += (_, e) =>
-            {
-                CompassBubbleTextures.Remove(e.Peer.PlayerID);
-                FarmerHeadHashes.Remove(e.Peer.PlayerID);
-            };
-            
-            // If the game returns to the title screen clear the texture and head hash dictionaries.
-            helper.Events.GameLoop.ReturnedToTitle += (_, _) =>
-            {
-                CompassBubbleTextures.Clear();
-                FarmerHeadHashes.Clear();
-            };
+            helper.Events.Multiplayer.PeerDisconnected += (_, e) => CompassBubbles.Remove(e.Peer.PlayerID);
+
+            // If the game returns to the title screen, clear the compass bubble dictionary.
+            helper.Events.GameLoop.ReturnedToTitle += (_, _) => CompassBubbles.Clear();
         }
         
 
@@ -114,6 +87,8 @@ namespace FarmhandFinder
             var playerCenter = (Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize))
                 .ToPoint();
 
+            // TODO: check cutsclees!
+            
             foreach (var peer in Helper.Multiplayer.GetConnectedPlayers())
             {
                 var farmer = Game1.getFarmer(peer.PlayerID);
@@ -143,15 +118,15 @@ namespace FarmhandFinder
                     Utility.LineIntersect(playerCenter, peerBounds.Center, l.Item1, l.Item2)).First(p => p != null);
 
                 // Calculate a normalized position based on the viewport, zoom level, and UI scale.
-                var backgroundPos = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
+                var compassPos = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
                     * Game1.options.zoomLevel / Game1.options.uiScale;
 
                 // Only draw the compass bubble if one has already been generated (denoted with the existence of a 
                 // farmer head hash).
-                if (!Config.HideCompassBubble && FarmerHeadHashes.ContainsKey(farmer.UniqueMultiplayerID))
+                if (!Config.HideCompassBubble && CompassBubbles.ContainsKey(farmer.UniqueMultiplayerID))
                 {
                     // Drawing the compass bubble at the normalized position.
-                    Utility.DrawCompassBubbleTexture(e.SpriteBatch, farmer, backgroundPos, 1, 1f);
+                    CompassBubbles[farmer.UniqueMultiplayerID].Draw(e.SpriteBatch, compassPos, 1, 1f);
                 }
 
                 if (!Config.HideCompassArrow)
@@ -159,7 +134,7 @@ namespace FarmhandFinder
                     // Drawing the compass arrow pivoted at an offset in the +X direction about the intersection point
                     // and rotated in the direction of the intersection point to center of the peer.
                     var arrowAngle = (float) Math.Atan2(peerCenter.Y - intersection.Y, peerCenter.X - intersection.X);
-                    var arrowPos = backgroundPos + new Vector2((float)Math.Cos(arrowAngle), (float)Math.Sin(arrowAngle))
+                    var arrowPos = compassPos + new Vector2((float)Math.Cos(arrowAngle), (float)Math.Sin(arrowAngle))
                         * (36 * Game1.options.uiScale);
                     Utility.DrawUiSprite(e.SpriteBatch, ArrowTexture, arrowPos, arrowAngle + MathHelper.PiOver2);   
                 }
