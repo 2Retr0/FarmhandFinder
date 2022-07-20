@@ -21,9 +21,13 @@ namespace FarmhandFinder
         internal static Texture2D ForegroundTexture;
         internal static Texture2D ArrowTexture;
         
-        // internal static readonly Dictionary<long, int> FarmerHeadHashes = new();
         internal static readonly Dictionary<long, CompassBubble> CompassBubbles = new();
 
+        /*********
+        ** Public methods
+        *********/
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
             Instance = this; Config = Helper.ReadConfig<ModConfig>();
@@ -39,6 +43,11 @@ namespace FarmhandFinder
 
 
 
+        /*********
+        ** Private methods
+        *********/
+        /// <summary>Loads the background, foreground, and arrow textures.</summary>
+        /// <param name="helper">IModHelper instance for loading data.</param>
         private void LoadTextures(IModHelper helper)
         {
             BackgroundTexture = helper.ModContent.Load<Texture2D>("assets/background2.png");
@@ -48,6 +57,8 @@ namespace FarmhandFinder
         
         
         
+        /// <summary>Handles the generation and deletion of compass bubble instances.</summary>
+        /// <param name="helper">IModHelper instance to add event predicates.</param>
         private void HandleCompassBubbles(IModHelper helper)
         {
             helper.Events.GameLoop.OneSecondUpdateTicked += (_, _) =>
@@ -73,6 +84,12 @@ namespace FarmhandFinder
         
 
 
+        /// <summary>
+        /// Raised after drawing the HUD (item toolbar, clock, etc) to the sprite batch, but before it's rendered to
+        /// the screen.
+        /// </summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event data.</param>
         [SuppressMessage("ReSharper", "PossibleInvalidOperationException")]
         private void OnRenderedHud(object sender, RenderedHudEventArgs e)
         {
@@ -115,7 +132,7 @@ namespace FarmhandFinder
                 // calculate the respective intersection point.
                 // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
                 // TODO: however, when using Game1.uiViewport, intersection calculations fail.
-                var intersection = Utility.LiangBarsky(
+                var intersection = Utility.LiangBarskyIntersection(
                     playerCenter, peerCenter, Game1.viewport, Config.HideCompassArrow ? 40 : 50);
                 
                 // Calculate a normalized position based on the viewport, zoom level, and UI scale.

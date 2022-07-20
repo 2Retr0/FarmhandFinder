@@ -37,6 +37,14 @@ namespace FarmhandFinder
         
         
         // TODO: Pixel size is ~1.5x larger than that of other UI elements at high zoom levels (150%)?
+        /// <summary>
+        /// Draws the specified texture properly scaled to the in-game UI scaling option's value.
+        /// </summary>
+        /// <param name="spriteBatch">The spritebatch to draw to.</param>
+        /// <param name="texture">The texture to draw--assumes a square size.</param>
+        /// <param name="position">The position at which the sprite will be drawn. The sprite will be centered about
+        /// this position</param>
+        /// <param name="angle">The angle at which the sprite will be drawn.</param>
         public static void DrawUiSprite(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, float angle)
         {
             int width = texture.Width, height = texture.Height;
@@ -47,6 +55,14 @@ namespace FarmhandFinder
 
 
 
+        /// <summary>
+        /// Draws the specified farmers head sprite. If the farmer is not yet fully loaded, an exception may be thrown.
+        /// </summary>
+        /// <param name="spriteBatch">The spritebatch to draw to.</param>
+        /// <param name="farmer">The specified farmer which the sprite will represent.</param>
+        /// <param name="position">The position at which the sprite will be drawn. The sprite will be centered about
+        /// this position.</param>
+        /// <param name="scale">The scale at which the sprite will be drawn.</param>
         public static void DrawFarmerHead(SpriteBatch spriteBatch, Farmer farmer, Vector2 position, float scale)
         {
             // The constants for the origin are chosen such that the head lines up just above the third-most bottom
@@ -164,7 +180,11 @@ namespace FarmhandFinder
 
         
         
-        
+        /// <summary>
+        /// Checks if a UI element (either stamina/health bar, clock box, or toolbar) exists at the specified position.
+        /// </summary>
+        /// <param name="position">The position to check.</param>
+        /// <returns>Whether the position resides within a UI element.</returns>
         public static bool UiElementsIntersect(Vector2 position)
         {
             bool IntersectsStaminaHealthBar()
@@ -201,7 +221,17 @@ namespace FarmhandFinder
         
         
         
-        public static Vector2 LiangBarsky(Vector2 p1, Vector2 p2, xTile.Dimensions.Rectangle r, int offset)
+        /// <summary>
+        /// Get the intersection point between a line segment and rectangle. Assumes that the first endpoint lies within
+        /// the bounds of the rectangle and that an intersection point exists. <br/><br/>
+        /// * Algorithm adapted from Daniel White https://www.skytopia.com/project/articles/compsci/clipping.html
+        /// </summary>
+        /// <param name="p1">The first line segment endpoint--it should lie within the bounds of the rectangle</param>
+        /// <param name="p2">The second line segment endpoint.</param>
+        /// <param name="r">The rectangle used for intersection.</param>
+        /// <param name="offset">An offset applied to each side of the rectangle effectively 'shrinking' it.</param>
+        /// <returns>The intersection point.</returns>
+        public static Vector2 LiangBarskyIntersection(Vector2 p1, Vector2 p2, xTile.Dimensions.Rectangle r, int offset)
         {
             float t = 1f, o = offset * Game1.options.uiScale / Game1.options.zoomLevel;
             float minX = r.X + o, 
