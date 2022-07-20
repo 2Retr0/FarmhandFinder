@@ -115,7 +115,7 @@ namespace FarmhandFinder
                 // calculate the respective intersection point.
                 // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
                 // TODO: however, when using Game1.uiViewport, intersection calculations fail.
-                var intersection = (Vector2) Utility.LiangBarsky(
+                var intersection = Utility.LiangBarsky(
                     playerCenter, peerCenter, Game1.viewport, Config.HideCompassArrow ? 40 : 50);
                 
                 // Calculate a normalized position based on the viewport, zoom level, and UI scale.
@@ -126,8 +126,10 @@ namespace FarmhandFinder
                 // farmer head hash).
                 if (!Config.HideCompassBubble && CompassBubbles.ContainsKey(farmer.UniqueMultiplayerID))
                 {
+                    var alpha = Utility.UiElementsIntersect(compassPos) ? 0.5f : 1f;
+
                     // Drawing the compass bubble at the normalized position.
-                    CompassBubbles[farmer.UniqueMultiplayerID].Draw(e.SpriteBatch, compassPos, 1, 1f);
+                    CompassBubbles[farmer.UniqueMultiplayerID].Draw(e.SpriteBatch, compassPos, 1, alpha);
                 }
 
                 if (!Config.HideCompassArrow)

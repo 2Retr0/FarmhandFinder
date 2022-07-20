@@ -162,8 +162,45 @@ namespace FarmhandFinder
                 DrawFarmerHat(2, 3, 2);
         }
 
+        
+        
+        
+        public static bool UiElementsIntersect(Vector2 position)
+        {
+            bool IntersectsStaminaHealthBar()
+            {
+                var topOffset = (int)(Game1.player.Stamina * 0.625f);
+                var leftBound = Game1.graphics.GraphicsDevice.Viewport.GetTitleSafeArea().Right - 56;
+                var topBound = Game1.graphics.GraphicsDevice.Viewport.GetTitleSafeArea().Bottom - topOffset - 72;
 
+                if (Game1.showingHealthBar) leftBound -= 56;
 
+                return position.X > leftBound && position.Y > topBound;
+            }
+            
+            bool IntersectsClockBox()
+            {
+                var clockRect = new Rectangle(
+                    Game1.dayTimeMoneyBox.position.ToPoint(), 
+                    new Point(
+                        ((IClickableMenu)Game1.dayTimeMoneyBox).width, 
+                        ((IClickableMenu)Game1.dayTimeMoneyBox).height));
+                
+                return clockRect.Contains(position);
+            }
+
+            bool IntersectsToolbar()
+            {
+                var toolbar = Game1.onScreenMenus.OfType<Toolbar>().FirstOrDefault();
+                
+                return toolbar?.isWithinBounds((int)position.X, (int)position.Y) ?? false;
+            }
+
+            return IntersectsStaminaHealthBar() || IntersectsClockBox() || IntersectsToolbar();
+        }
+        
+        
+        
         public static Vector2 LiangBarsky(Vector2 p1, Vector2 p2, xTile.Dimensions.Rectangle r, int offset)
         {
             float t = 1f, o = offset * Game1.options.uiScale / Game1.options.zoomLevel;
