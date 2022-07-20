@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using Rectangle = Microsoft.Xna.Framework.Rectangle;
+using Rectangle = xTile.Dimensions.Rectangle;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace FarmhandFinder
@@ -72,20 +73,13 @@ namespace FarmhandFinder
         
 
 
+        [SuppressMessage("ReSharper", "PossibleInvalidOperationException")]
         private void OnRenderedHud(object sender, RenderedHudEventArgs e)
         {
             if (!Context.HasRemotePlayers) return; // Ignore if player hasn't loaded a save yet.
 
-            // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
-            // TODO: however, when using Game1.uiViewport, intersection calculations fail.
-            // Generate four lines boxing in the viewport with an inwards offset (that is, a smaller 'box').
-            var spriteDrawBounds = Utility.GenerateSpriteDrawBounds(
-                Game1.viewport.X, Game1.viewport.Y, Game1.viewport.Width, Game1.viewport.Height, 
-                Config.HideCompassArrow ? 40 : 50);
-
             // TODO: Move intersection calculations into a separate function?
-            var playerCenter = (Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize))
-                .ToPoint();
+            var playerCenter = Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize);
 
             // TODO: check cutsclees!
             
@@ -106,17 +100,24 @@ namespace FarmhandFinder
                 // the player and peer definitely intersects the viewport draw bounds.
                 // TODO: Maybe use farmer.getBoundingBox() in some way rather than make our own?
                 var peerBounds = new Rectangle(
-                    (int)(farmer.position.X + 0.125f * Game1.tileSize), (int)(farmer.position.Y - 1.5f * Game1.tileSize), 
+                    (int)(farmer.position.X + 0.125f * Game1.tileSize), 
+                    (int)(farmer.position.Y - 1.5f * Game1.tileSize), 
                     (int)(0.75f * Game1.tileSize), 2 * Game1.tileSize);
-                var peerCenter = peerBounds.Center;
+                
+                var peerCenter = new Vector2(
+                    peerBounds.X + peerBounds.Width / 2f,
+                    peerBounds.Y + peerBounds.Height / 2f);
+                
                 // Skip if bounds and viewport intersect.
-                if (peerBounds.Intersects(Game1.viewport.ToXna())) continue;
+                if (peerBounds.Intersects(Game1.viewport)) continue;
 
-                // We find the first non-null intersection point between a line in spriteDrawBounds and a line between
-                // the centers of the player and peer.
-                var intersection = (Vector2) spriteDrawBounds.Select(l =>
-                    Utility.LineIntersect(playerCenter, peerBounds.Center, l.Item1, l.Item2)).First(p => p != null);
-
+                // As we now know that there is a definite intersection between the player, peer, and viewport,
+                // calculate the respective intersection point.
+                // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
+                // TODO: however, when using Game1.uiViewport, intersection calculations fail.
+                var intersection = (Vector2) Utility.LiangBarsky(
+                    playerCenter, peerCenter, Game1.viewport, Config.HideCompassArrow ? 40 : 50);
+                
                 // Calculate a normalized position based on the viewport, zoom level, and UI scale.
                 var compassPos = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
                     * Game1.options.zoomLevel / Game1.options.uiScale;
