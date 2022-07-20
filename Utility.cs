@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -56,7 +57,7 @@ namespace FarmhandFinder
 
 
         /// <summary>
-        /// Draws the specified farmers head sprite. If the farmer is not yet fully loaded, an exception may be thrown.
+        /// Draws the specified farmers head sprite. If the farmer is not yet fully loaded, no sprite will be drawn.
         /// </summary>
         /// <param name="spriteBatch">The spritebatch to draw to.</param>
         /// <param name="farmer">The specified farmer which the sprite will represent.</param>
@@ -231,6 +232,7 @@ namespace FarmhandFinder
         /// <param name="r">The rectangle used for intersection.</param>
         /// <param name="offset">An offset applied to each side of the rectangle effectively 'shrinking' it.</param>
         /// <returns>The intersection point.</returns>
+        [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
         public static Vector2 LiangBarskyIntersection(Vector2 p1, Vector2 p2, xTile.Dimensions.Rectangle r, int offset)
         {
             float t = 1f, o = offset * Game1.options.uiScale / Game1.options.zoomLevel;
@@ -257,6 +259,43 @@ namespace FarmhandFinder
             }
             
             return new Vector2(p1.X + t * dx, p1.Y + t * dy);
+        }
+
+
+
+        public static bool handleIntersectionCalculations(
+            Farmer targetFarmer, out Vector2 intersection, out float arrowAngle)
+        {
+            intersection = Vector2.Zero; arrowAngle = 0f;
+            var playerCenter = Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize);
+            
+            // We denote an approximate bound about the farmer before checking if the approximate bound intersects
+            // the viewport--if so, the peer is on screen and should be skipped. If not, then a line drawn between
+            // the player and peer definitely intersects the viewport draw bounds.
+            // TODO: Maybe use farmer.getBoundingBox() in some way rather than make our own?
+            var peerBounds = new xTile.Dimensions.Rectangle(
+                (int)(targetFarmer.position.X + 0.125f * Game1.tileSize), 
+                (int)(targetFarmer.position.Y - 1.5f * Game1.tileSize), 
+                (int)(0.75f * Game1.tileSize), 2 * Game1.tileSize);
+                
+            var peerCenter = new Vector2(peerBounds.X + peerBounds.Width / 2f, peerBounds.Y + peerBounds.Height / 2f);
+                
+            // Skip if bounds and viewport intersect.
+            if (peerBounds.Intersects(Game1.viewport)) return false;
+
+            // As we now know that there is a definite intersection between the player, peer, and viewport,
+            // calculate the respective intersection point.
+            // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
+            // TODO: however, when using Game1.uiViewport, intersection calculations fail.
+            intersection = LiangBarskyIntersection(
+                playerCenter, peerCenter, Game1.viewport, FarmhandFinder.Config.HideCompassArrow ? 40 : 50);
+                
+            arrowAngle = (float) Math.Atan2(peerCenter.Y - intersection.Y, peerCenter.X - intersection.X);
+            // Normalized position based on the viewport, zoom level, and UI scale.
+            intersection = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
+                * Game1.options.zoomLevel / Game1.options.uiScale;
+            
+            return true;
         }
     }
 }

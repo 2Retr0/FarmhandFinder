@@ -94,10 +94,7 @@ namespace FarmhandFinder
         private void OnRenderedHud(object sender, RenderedHudEventArgs e)
         {
             if (!Context.HasRemotePlayers) return; // Ignore if player hasn't loaded a save yet.
-
-            // TODO: Move intersection calculations into a separate function?
-            var playerCenter = Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize);
-
+            
             // TODO: check cutsclees!
             
             foreach (var peer in Helper.Multiplayer.GetConnectedPlayers())
@@ -111,33 +108,8 @@ namespace FarmhandFinder
                     || farmer.currentLocation == null 
                     || !farmer.currentLocation.Equals(Game1.player.currentLocation)) 
                     continue;
-
-                // We denote an approximate bound about the farmer before checking if the approximate bound intersects
-                // the viewport--if so, the peer is on screen and should be skipped. If not, then a line drawn between
-                // the player and peer definitely intersects the viewport draw bounds.
-                // TODO: Maybe use farmer.getBoundingBox() in some way rather than make our own?
-                var peerBounds = new Rectangle(
-                    (int)(farmer.position.X + 0.125f * Game1.tileSize), 
-                    (int)(farmer.position.Y - 1.5f * Game1.tileSize), 
-                    (int)(0.75f * Game1.tileSize), 2 * Game1.tileSize);
                 
-                var peerCenter = new Vector2(
-                    peerBounds.X + peerBounds.Width / 2f,
-                    peerBounds.Y + peerBounds.Height / 2f);
-                
-                // Skip if bounds and viewport intersect.
-                if (peerBounds.Intersects(Game1.viewport)) continue;
-
-                // As we now know that there is a definite intersection between the player, peer, and viewport,
-                // calculate the respective intersection point.
-                // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
-                // TODO: however, when using Game1.uiViewport, intersection calculations fail.
-                var intersection = Utility.LiangBarskyIntersection(
-                    playerCenter, peerCenter, Game1.viewport, Config.HideCompassArrow ? 40 : 50);
-                
-                // Calculate a normalized position based on the viewport, zoom level, and UI scale.
-                var compassPos = (intersection - new Vector2(Game1.viewport.X, Game1.viewport.Y)) 
-                    * Game1.options.zoomLevel / Game1.options.uiScale;
+                if (!Utility.handleIntersectionCalculations(farmer, out var compassPos, out var arrowAngle)) continue;
 
                 // Only draw the compass bubble if one has already been generated (denoted with the existence of a 
                 // farmer head hash).
@@ -148,12 +120,11 @@ namespace FarmhandFinder
                     // Drawing the compass bubble at the normalized position.
                     CompassBubbles[farmer.UniqueMultiplayerID].Draw(e.SpriteBatch, compassPos, 1, alpha);
                 }
-
+                
                 if (!Config.HideCompassArrow)
                 {
                     // Drawing the compass arrow pivoted at an offset in the +X direction about the intersection point
                     // and rotated in the direction of the intersection point to center of the peer.
-                    var arrowAngle = (float) Math.Atan2(peerCenter.Y - intersection.Y, peerCenter.X - intersection.X);
                     var arrowPos = compassPos + new Vector2((float)Math.Cos(arrowAngle), (float)Math.Sin(arrowAngle))
                         * (36 * Game1.options.uiScale);
                     Utility.DrawUiSprite(e.SpriteBatch, ArrowTexture, arrowPos, arrowAngle + MathHelper.PiOver2);   
