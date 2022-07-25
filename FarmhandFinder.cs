@@ -48,7 +48,7 @@ namespace FarmhandFinder
         *********/
         /// <summary>Loads the background, foreground, and arrow textures.</summary>
         /// <param name="helper">IModHelper instance for loading data.</param>
-        private void LoadTextures(IModHelper helper)
+        private static void LoadTextures(IModHelper helper)
         {
             BackgroundTexture = helper.ModContent.Load<Texture2D>("assets/background2.png");
             ForegroundTexture = helper.ModContent.Load<Texture2D>("assets/foreground.png");
@@ -93,30 +93,29 @@ namespace FarmhandFinder
         [SuppressMessage("ReSharper", "PossibleInvalidOperationException")]
         private void OnRenderedHud(object sender, RenderedHudEventArgs e)
         {
-            if (!Context.HasRemotePlayers) return; // Ignore if player hasn't loaded a save yet.
-            
-            // TODO: check cutsclees!
-            
+            // Render nothing if no remote players are present or if the player is in a cutscene.
+            if (!Context.HasRemotePlayers || Game1.player.hidden.Value) return;
+
             foreach (var peer in Helper.Multiplayer.GetConnectedPlayers())
             {
                 var farmer = Game1.getFarmer(peer.PlayerID);
-
-                // TODO: More split screen checks are needed--specifically having the remote peer bubble show up in both
-                // TODO: screens and the remote peer bubble needs to be displayed on the correct location for each screen.
-                // Skip if the selected farmer is a remote peer and their current location is the same as the player.
-                if (peer.IsSplitScreen 
-                    || farmer.currentLocation == null 
-                    || !farmer.currentLocation.Equals(Game1.player.currentLocation)) 
-                    continue;
                 
+                var sameLocation = farmer.currentLocation != null &&
+                                   !farmer.currentLocation.Equals(Game1.player.currentLocation);
+                
+                // TODO: More split screen checks are needed--specifically having the peer bubble show up in both
+                // TODO: screens and displayed on the correct location for each screen.
+                // Render nothing if the peer is not in the same location or is hidden (cutscene).
+                if (peer.IsSplitScreen || !sameLocation || farmer.hidden.Value) continue;
+                
+                // Also render nothing if an intersection between the player, peer, and viewport does not exist.
                 if (!Utility.handleIntersectionCalculations(farmer, out var compassPos, out var arrowAngle)) continue;
 
-                // Only draw the compass bubble if one has already been generated (denoted with the existence of a 
-                // farmer head hash).
+                // Only draw the compass bubble if one has already been generated.
                 if (!Config.HideCompassBubble && CompassBubbles.ContainsKey(farmer.UniqueMultiplayerID))
                 {
                     var alpha = Utility.UiElementsIntersect(compassPos) ? 0.5f : 1f;
-
+                    
                     // Drawing the compass bubble at the normalized position.
                     CompassBubbles[farmer.UniqueMultiplayerID].Draw(e.SpriteBatch, compassPos, 1, alpha);
                 }
