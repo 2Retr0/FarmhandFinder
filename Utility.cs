@@ -10,33 +10,6 @@ namespace FarmhandFinder
 {
     public static class Utility
     {
-        private static readonly Texture2D _texture = new (Game1.graphics.GraphicsDevice, 1, 1);
-
-
-
-        public static void DrawLine(SpriteBatch spriteBatch, Vector2 p1, Vector2 p2)
-        {
-            // p1 -= (Game1.options.zoomLevel / Game1.options.uiScale) * new Vector2(Game1.viewport.X, Game1.viewport.Y);
-            // p2 -= (Game1.options.zoomLevel / Game1.options.uiScale) * new Vector2(Game1.viewport.X, Game1.viewport.Y);
-
-            _texture.SetData(new[] { Color.White });
-            spriteBatch.Draw(_texture, p1, null, Color.Red, 
-                (float) Math.Atan2(p2.Y - p1.Y, p2.X - p1.X), Vector2.Zero, 
-                new Vector2(Vector2.Distance(p1, p2), 2f), SpriteEffects.None, 0f);
-        }
-
-
-
-        public static void DrawRectangle(SpriteBatch spriteBatch, Rectangle r)
-        {
-            DrawLine(spriteBatch, new Vector2(r.X, r.Y),            new Vector2(r.X + r.Width, r.Y));
-            DrawLine(spriteBatch, new Vector2(r.X + r.Width, r.Y),  new Vector2(r.X + r.Width, r.Y + r.Height));
-            DrawLine(spriteBatch, new Vector2(r.X, r.Y + r.Height), new Vector2(r.X + r.Width, r.Y + r.Height));
-            DrawLine(spriteBatch, new Vector2(r.X, r.Y),            new Vector2(r.X, r.Y + r.Height));
-        }
-
-        
-        
         // TODO: Pixel size is ~1.5x larger than that of other UI elements at high zoom levels (150%)?
         /// <summary>
         /// Draws the specified texture properly scaled to the in-game UI scaling option's value.
@@ -190,10 +163,10 @@ namespace FarmhandFinder
         {
             bool IntersectsStaminaHealthBar()
             {
-                var topOffset = (int)(Game1.player.Stamina * 0.625f);
+                var topOffset = (int)(Math.Max(Game1.player.MaxStamina, Game1.player.maxHealth) * 0.625f);
                 var leftBound = Game1.graphics.GraphicsDevice.Viewport.GetTitleSafeArea().Right - 56;
                 var topBound = Game1.graphics.GraphicsDevice.Viewport.GetTitleSafeArea().Bottom - topOffset - 72;
-
+                
                 if (Game1.showingHealthBar) leftBound -= 56;
 
                 return position.X > leftBound && position.Y > topBound;
@@ -206,14 +179,12 @@ namespace FarmhandFinder
                     new Point(
                         ((IClickableMenu)Game1.dayTimeMoneyBox).width, 
                         ((IClickableMenu)Game1.dayTimeMoneyBox).height));
-                
                 return clockRect.Contains(position);
             }
 
             bool IntersectsToolbar()
             {
                 var toolbar = Game1.onScreenMenus.OfType<Toolbar>().FirstOrDefault();
-                
                 return toolbar?.isWithinBounds((int)position.X, (int)position.Y) ?? false;
             }
 
@@ -263,16 +234,25 @@ namespace FarmhandFinder
 
 
 
+        /// <summary>
+        /// Gets the intersection point between the player, farmer, and viewport and calculates the compass arrow angle.
+        /// </summary>
+        /// <param name="targetFarmer">The farmer to which the player and viewport will check for intersection.</param>
+        /// <param name="intersection">The intersection point between the player, farmer, and viewport--will be set to
+        /// a zeroed Vector2 if an intersection could not be found.</param>
+        /// <param name="arrowAngle">The angle at which the compass arrow is to be drawn--will be set to 0 if an
+        /// intersection could not be found.</param>
+        /// <returns>Whether an intersection point was found.</returns>
         public static bool handleIntersectionCalculations(
             Farmer targetFarmer, out Vector2 intersection, out float arrowAngle)
         {
             intersection = Vector2.Zero; arrowAngle = 0f;
             var playerCenter = Game1.player.Position + new Vector2(0.5f * Game1.tileSize, -0.5f * Game1.tileSize);
             
+            // TODO: Maybe use farmer.getBoundingBox() in some way rather than make our own?
             // We denote an approximate bound about the farmer before checking if the approximate bound intersects
             // the viewport--if so, the peer is on screen and should be skipped. If not, then a line drawn between
             // the player and peer definitely intersects the viewport draw bounds.
-            // TODO: Maybe use farmer.getBoundingBox() in some way rather than make our own?
             var peerBounds = new xTile.Dimensions.Rectangle(
                 (int)(targetFarmer.position.X + 0.125f * Game1.tileSize), 
                 (int)(targetFarmer.position.Y - 1.5f * Game1.tileSize), 
@@ -282,11 +262,9 @@ namespace FarmhandFinder
                 
             // Skip if bounds and viewport intersect.
             if (peerBounds.Intersects(Game1.viewport)) return false;
-
+            
             // As we now know that there is a definite intersection between the player, peer, and viewport,
             // calculate the respective intersection point.
-            // TODO: Game1.viewport shifts slightly when corrected after changing either the UI scale or zoom level,
-            // TODO: however, when using Game1.uiViewport, intersection calculations fail.
             intersection = LiangBarskyIntersection(
                 playerCenter, peerCenter, Game1.viewport, FarmhandFinder.Config.HideCompassArrow ? 40 : 50);
                 

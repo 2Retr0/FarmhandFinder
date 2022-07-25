@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
@@ -9,10 +10,14 @@ namespace FarmhandFinder
 {
     public class CompassBubble
     {
+        private const float ALPHA_DELTA_TIME = 300f;
+
         private readonly Farmer farmer;
-        private int farmerHeadHash;
+        private int farmerHeadHash = -1;
         private Texture2D compassTexture;
-        
+        private SmoothLerpUtil alphaLerpUtil;
+        private float currentAlpha = 1f;
+
         /*********
         ** Public methods
         *********/
@@ -22,7 +27,8 @@ namespace FarmhandFinder
         public CompassBubble(Farmer targetFarmer, IModHelper helper)
         {
             farmer = targetFarmer;
-            farmerHeadHash = -1;
+            alphaLerpUtil = new SmoothLerpUtil(1f, 1f, ALPHA_DELTA_TIME);
+
             helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
         }
 
@@ -38,11 +44,16 @@ namespace FarmhandFinder
         {
             // Only draw if the farmer's head hash is non-null (i.e. their head texture has been generated).
             if (farmerHeadHash == -1) return;
-
+            
+            // If the target alpha is changed, re-linearly interpolate starting from the current alpha to the new
+            // target alpha.
+            if (Math.Abs(alpha - alphaLerpUtil.TargetValue) > 0.002f)
+                alphaLerpUtil = new SmoothLerpUtil(currentAlpha, alpha, ALPHA_DELTA_TIME);
+                
             int width = compassTexture.Width, height = compassTexture.Height;
             spriteBatch.Draw(
-                compassTexture, position, new Rectangle(0, 0, width, height), Color.White * alpha, 0, 
-                new Vector2(width / 2f, height / 2f), scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
+                compassTexture, position, new Rectangle(0, 0, width, height), Color.White * currentAlpha, 
+                0, new Vector2(width / 2f, height / 2f), scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
         }
         
         
@@ -55,15 +66,27 @@ namespace FarmhandFinder
         /// <param name="e">The event data.</param>
         private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
         {
-            if (!e.IsMultipleOf(30)) return; // Only run function every half second.
+            void HandleAlphaTransition()
+            {
+                if (e.IsMultipleOf(4)) // Only update alpha ~15 times per second.
+                    currentAlpha = alphaLerpUtil.CurrentValue;
+            }
+
+            void HandleTextureRegeneration()
+            {
+                if (!e.IsMultipleOf(30)) return; // Only run function every half second.
             
-            // Regenerate the compass texture if the head hash has changed and is non-null. As texture generation is
-            // expensive, we only want to regenerate it when the farmer changes their appearance.
-            var currentHeadHash = GenerateHeadHash();
-            if (currentHeadHash == farmerHeadHash || currentHeadHash == -1) return;
+                // Regenerate the compass texture if the head hash has changed and is non-null. As texture generation is
+                // expensive, we only want to regenerate it when the farmer changes their appearance.
+                var currentHeadHash = GenerateHeadHash();
+                if (currentHeadHash == farmerHeadHash || currentHeadHash == -1) return;
             
-            farmerHeadHash = currentHeadHash;
-            compassTexture = GenerateTexture();
+                farmerHeadHash = currentHeadHash;
+                compassTexture = GenerateTexture();   
+            }
+            
+            HandleAlphaTransition();
+            HandleTextureRegeneration();
         }
         
         
@@ -131,5 +154,42 @@ namespace FarmhandFinder
             graphicsDevice.SetRenderTarget(null);
             return textureBuffer;
         }
+    }
+
+    
+    
+    /// <summary>
+    /// A utility for smooth (i.e. eased in-out) linear interpolations over a time interval.
+    /// </summary>
+    public readonly struct SmoothLerpUtil
+    {
+        public SmoothLerpUtil(float initialValue, float targetValue, float deltaTime)
+        {
+            InitialValue = initialValue; 
+            TargetValue  = targetValue; 
+            DeltaTime    = deltaTime; 
+            Stopwatch    = new Stopwatch();
+            Stopwatch.Start();
+        }
+
+        public float InitialValue { get; }
+        public float TargetValue { get; }
+        public float CurrentValue { get 
+            {
+                // Linearly interpolate (w/ ease-in-out) if the target alpha value is not yet reached.
+                if (Stopwatch.ElapsedMilliseconds < DeltaTime)
+                {
+                    var time = MathHelper.Clamp(Stopwatch.ElapsedMilliseconds / DeltaTime, 0f, 1f);
+                    return StardewValley.Utility.Lerp(InitialValue, TargetValue, EaseInOut(time));
+                }
+                Stopwatch.Stop();
+                return TargetValue;
+            } 
+        }
+        
+        private Stopwatch Stopwatch { get; }
+        private float DeltaTime { get; }
+
+        private static float EaseInOut(float t) => StardewValley.Utility.Lerp(t * t, 2 * t - (t * t), t);
     }
 }
