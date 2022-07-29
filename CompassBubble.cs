@@ -143,9 +143,9 @@ namespace FarmhandFinder
                     depthStencilState: DepthStencilState.Default, 
                     rasterizerState: RasterizerState.CullNone);
 
-                Utility.DrawUiSprite(spriteBatch, backgroundTexture, offset, 0f);
+                Utility.DrawUiSprite(spriteBatch, backgroundTexture, offset, 0.75f, 0f);
                 Utility.DrawFarmerHead(spriteBatch, farmer, offset, 0.75f);
-                Utility.DrawUiSprite(spriteBatch, foregroundTexture, offset, 0f);
+                Utility.DrawUiSprite(spriteBatch, foregroundTexture, offset, 0.75f, 0f);
 
                 spriteBatch.End();
             }
