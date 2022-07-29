@@ -50,9 +50,9 @@ namespace FarmhandFinder
         /// <param name="helper">IModHelper instance for loading data.</param>
         private static void LoadTextures(IModHelper helper)
         {
-            BackgroundTexture = helper.ModContent.Load<Texture2D>("assets/background2.png");
-            ForegroundTexture = helper.ModContent.Load<Texture2D>("assets/foreground.png");
-            ArrowTexture = helper.ModContent.Load<Texture2D>("assets/arrow.png");
+            BackgroundTexture = helper.ModContent.Load<Texture2D>("assets/bubble.png");
+            ForegroundTexture = helper.ModContent.Load<Texture2D>("assets/bubble_front.png");
+            ArrowTexture      = helper.ModContent.Load<Texture2D>("assets/arrow.png");
         }
         
         
@@ -101,7 +101,7 @@ namespace FarmhandFinder
                 var farmer = Game1.getFarmer(peer.PlayerID);
                 
                 var sameLocation = farmer.currentLocation != null &&
-                                   !farmer.currentLocation.Equals(Game1.player.currentLocation);
+                                   farmer.currentLocation.Equals(Game1.player.currentLocation);
                 
                 // TODO: More split screen checks are needed--specifically having the peer bubble show up in both
                 // TODO: screens and displayed on the correct location for each screen.
@@ -126,7 +126,7 @@ namespace FarmhandFinder
                     // and rotated in the direction of the intersection point to center of the peer.
                     var arrowPos = compassPos + new Vector2((float)Math.Cos(arrowAngle), (float)Math.Sin(arrowAngle))
                         * (36 * Game1.options.uiScale);
-                    Utility.DrawUiSprite(e.SpriteBatch, ArrowTexture, arrowPos, arrowAngle + MathHelper.PiOver2);   
+                    Utility.DrawUiSprite(e.SpriteBatch, ArrowTexture, arrowPos, 0.75f, arrowAngle + MathHelper.PiOver2);   
                 }
             }
         }

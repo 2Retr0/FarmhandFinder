@@ -18,13 +18,14 @@ namespace FarmhandFinder
         /// <param name="texture">The texture to draw--assumes a square size.</param>
         /// <param name="position">The position at which the sprite will be drawn. The sprite will be centered about
         /// this position</param>
+        /// <param name="scale">The scale at which the sprite will be drawn.</param>
         /// <param name="angle">The angle at which the sprite will be drawn.</param>
-        public static void DrawUiSprite(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, float angle)
+        public static void DrawUiSprite(SpriteBatch spriteBatch, Texture2D texture, Vector2 position, float scale, float angle)
         {
             int width = texture.Width, height = texture.Height;
             spriteBatch.Draw(
                 texture, position, new Rectangle(0, 0, width, height), Color.White, angle, 
-                new Vector2(width / 2f, height / 2f), 4 * Game1.options.uiScale, SpriteEffects.None, 0.8f);
+                new Vector2(width / 2f, height / 2f), 4 * scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
         }
 
 
