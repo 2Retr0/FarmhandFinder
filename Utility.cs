@@ -42,7 +42,7 @@ namespace FarmhandFinder
         {
             // The constants for the origin are chosen such that the head lines up just above the third-most bottom
             // pixel of the background sprite. I'm not sure how to make the calculation cleaner...
-            var origin = new Vector2(8f, (1 + scale) / 2 * (10.25f + (farmer.IsMale ? 0 : 0.75f)));
+            var origin = new Vector2(8f, (1 + scale) / 2 * (10.25f + (farmer.IsMale ? 0 : 1)));
             
             // Get the base texture of the target farmer--it will include the skin color, eye color, etc.
             var baseTexture = FarmhandFinder.Instance.Helper.Reflection.GetField<Texture2D>(
