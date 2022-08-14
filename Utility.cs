@@ -244,7 +244,7 @@ namespace FarmhandFinder
         /// <param name="arrowAngle">The angle at which the compass arrow is to be drawn--will be set to 0 if an
         /// intersection could not be found.</param>
         /// <returns>Whether an intersection point was found.</returns>
-        public static bool handleIntersectionCalculations(
+        public static bool HandleIntersectionCalculations(
             Farmer targetFarmer, out Vector2 intersection, out float arrowAngle)
         {
             intersection = Vector2.Zero; arrowAngle = 0f;
