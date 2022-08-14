@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using Rectangle = xTile.Dimensions.Rectangle;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace FarmhandFinder
@@ -109,7 +107,7 @@ namespace FarmhandFinder
                 if (peer.IsSplitScreen || !sameLocation || farmer.hidden.Value) continue;
                 
                 // Also render nothing if an intersection between the player, peer, and viewport does not exist.
-                if (!Utility.handleIntersectionCalculations(farmer, out var compassPos, out var arrowAngle)) continue;
+                if (!Utility.HandleIntersectionCalculations(farmer, out var compassPos, out var arrowAngle)) continue;
 
                 // Only draw the compass bubble if one has already been generated.
                 if (!Config.HideCompassBubble && CompassBubbles.ContainsKey(farmer.UniqueMultiplayerID))
