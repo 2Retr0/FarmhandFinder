@@ -10,13 +10,13 @@ namespace FarmhandFinder
 {
     public class CompassBubble
     {
-        private const float ALPHA_DELTA_TIME = 300f;
+        private const float AlphaDeltaTime = 300f;
 
-        private readonly Farmer farmer;
-        private int farmerHeadHash = -1;
-        private Texture2D compassTexture;
-        private SmoothLerpUtil alphaLerpUtil;
-        private float currentAlpha = 1f;
+        private readonly Farmer _farmer;
+        private int _farmerHeadHash = -1;
+        private Texture2D _compassTexture;
+        private SmoothLerpUtil _alphaLerpUtil;
+        private float _currentAlpha = 1f;
 
         /*********
         ** Public methods
@@ -26,8 +26,8 @@ namespace FarmhandFinder
         /// <param name="helper">IModHelper instance to add event predicates.</param>
         public CompassBubble(Farmer targetFarmer, IModHelper helper)
         {
-            farmer = targetFarmer;
-            alphaLerpUtil = new SmoothLerpUtil(1f, 1f, ALPHA_DELTA_TIME);
+            _farmer = targetFarmer;
+            _alphaLerpUtil = new SmoothLerpUtil(1f, 1f, AlphaDeltaTime);
 
             helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
         }
@@ -43,16 +43,16 @@ namespace FarmhandFinder
         public void Draw(SpriteBatch spriteBatch, Vector2 position, float scale, float alpha)
         {
             // Only draw if the farmer's head hash is non-null (i.e. their head texture has been generated).
-            if (farmerHeadHash == -1) return;
+            if (_farmerHeadHash == -1) return;
             
             // If the target alpha is changed, re-linearly interpolate starting from the current alpha to the new
             // target alpha.
-            if (Math.Abs(alpha - alphaLerpUtil.TargetValue) > 0.002f)
-                alphaLerpUtil = new SmoothLerpUtil(currentAlpha, alpha, ALPHA_DELTA_TIME);
+            if (Math.Abs(alpha - _alphaLerpUtil.TargetValue) > 0.002f)
+                _alphaLerpUtil = new SmoothLerpUtil(_currentAlpha, alpha, AlphaDeltaTime);
                 
-            int width = compassTexture.Width, height = compassTexture.Height;
+            int width = _compassTexture.Width, height = _compassTexture.Height;
             spriteBatch.Draw(
-                compassTexture, position, new Rectangle(0, 0, width, height), Color.White * currentAlpha, 
+                _compassTexture, position, new Rectangle(0, 0, width, height), Color.White * _currentAlpha, 
                 0, new Vector2(width / 2f, height / 2f), scale * Game1.options.uiScale, SpriteEffects.None, 0.8f);
         }
         
@@ -69,7 +69,7 @@ namespace FarmhandFinder
             void HandleAlphaTransition()
             {
                 if (e.IsMultipleOf(4)) // Only update alpha ~15 times per second.
-                    currentAlpha = alphaLerpUtil.CurrentValue;
+                    _currentAlpha = _alphaLerpUtil.CurrentValue;
             }
 
             void HandleTextureRegeneration()
@@ -79,10 +79,10 @@ namespace FarmhandFinder
                 // Regenerate the compass texture if the head hash has changed and is non-null. As texture generation is
                 // expensive, we only want to regenerate it when the farmer changes their appearance.
                 var currentHeadHash = GenerateHeadHash();
-                if (currentHeadHash == farmerHeadHash || currentHeadHash == -1) return;
+                if (currentHeadHash == _farmerHeadHash || currentHeadHash == -1) return;
             
-                farmerHeadHash = currentHeadHash;
-                compassTexture = GenerateTexture();   
+                _farmerHeadHash = currentHeadHash;
+                _compassTexture = GenerateTexture();   
             }
             
             HandleAlphaTransition();
@@ -97,12 +97,12 @@ namespace FarmhandFinder
         {
             // TODO: Is there a better way to check the base texture for farmers (i.e. nose, gender, etc.)?
             var baseTextureValue = FarmhandFinder.Instance.Helper.Reflection.GetField<Texture2D>(
-                farmer.FarmerRenderer, "baseTexture").GetValue();
+                _farmer.FarmerRenderer, "baseTexture").GetValue();
             if (baseTextureValue == null) return -1;
 
             // We hash a combination of various features that can be changed on the farmer's head for easy comparison.
             var headHash = HashCode.Combine(
-                baseTextureValue, farmer.newEyeColor, farmer.skin, farmer.hair, farmer.hairstyleColor, farmer.hat);
+                baseTextureValue, _farmer.newEyeColor, _farmer.skin, _farmer.hair, _farmer.hairstyleColor, _farmer.hat);
             
             // Ensure that a hash value of -1 is reserved for null base texture values only.
             return headHash == -1 ? ++headHash : headHash;
@@ -144,7 +144,7 @@ namespace FarmhandFinder
                     rasterizerState: RasterizerState.CullNone);
 
                 Utility.DrawUiSprite(spriteBatch, backgroundTexture, offset, 0.75f, 0f);
-                Utility.DrawFarmerHead(spriteBatch, farmer, offset, 0.75f);
+                Utility.DrawFarmerHead(spriteBatch, _farmer, offset, 0.75f);
                 Utility.DrawUiSprite(spriteBatch, foregroundTexture, offset, 0.75f, 0f);
 
                 spriteBatch.End();
